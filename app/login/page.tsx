@@ -12,6 +12,7 @@ import {
 import { AuthService } from "@/lib/services/auth-service";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useRouter } from "next/navigation";
+import { useTheme } from "next-themes";
 
 export default function LoginPage() {
   const login = useAuthStore((state) => state.login);
@@ -41,9 +42,11 @@ export default function LoginPage() {
     console.error("Values");
   };
 
+  const { resolvedTheme } = useTheme();
+
   return (
-    <div className="flex h-screen w-full items-center justify-center bg-gray-50">
-      <Card className="w-full max-w-md shadow-lg">
+    <div className="bg-background flex h-screen w-full items-center justify-center px-4">
+      <Card className="border-border bg-card w-full max-w-md shadow-lg">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold">Welcome Back</CardTitle>
           <CardDescription>
@@ -56,7 +59,7 @@ export default function LoginPage() {
             onError={handleGoogleError}
             useOneTap
             shape="rectangular"
-            theme="outline"
+            theme={resolvedTheme === "dark" ? "filled_black" : "outline"}
             size="large"
             width="100%"
           />

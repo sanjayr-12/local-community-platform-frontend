@@ -16,7 +16,7 @@ import { MapPin, Users, Calendar, Heart, Menu } from "lucide-react";
 import { GoogleLogin, CredentialResponse } from "@react-oauth/google";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
-import { AuthService } from "@/lib/services/auth-service";
+import { authService } from "@/lib/services/auth-service";
 import { useAuthStore } from "@/store/useAuthStore";
 
 export default function GetStartedPage() {
@@ -32,7 +32,7 @@ export default function GetStartedPage() {
     if (credentialResponse.credential) {
       setLoading(true);
       try {
-        const data = await AuthService.loginWithGoogle(
+        const data = await authService.loginWithGoogle(
           credentialResponse.credential,
         );
         login(data.user, data.token);
@@ -143,11 +143,10 @@ export default function GetStartedPage() {
                   if (token) {
                     setLoading(true);
                     try {
-                      await AuthService.getMe();
+                      await authService.getMe();
                       router.push("/");
                     } catch (error) {
                       console.error("Token invalid/expired:", error);
-                      // Auth store cleared by interceptor, so just show login
                       setIsLoginVisible(true);
                     } finally {
                       setLoading(false);

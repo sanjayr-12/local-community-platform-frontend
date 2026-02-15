@@ -17,7 +17,7 @@ export interface LoginResponse {
   };
 }
 
-export const AuthService = {
+export const authService = {
   async loginWithGoogle(
     credential: string,
   ): Promise<{ user: LoginResponse["data"]["user"]; token: string }> {

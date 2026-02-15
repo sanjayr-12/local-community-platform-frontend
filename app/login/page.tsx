@@ -56,8 +56,8 @@ export default function LoginPage() {
         <CardContent className="flex flex-col items-center justify-center gap-4 py-6">
           <GoogleLogin
             onSuccess={handleGoogleSuccess}
-            onError={handleGoogleError}
             useOneTap
+            onError={handleGoogleError}
             shape="rectangular"
             theme={resolvedTheme === "dark" ? "filled_black" : "outline"}
             size="large"

@@ -12,9 +12,12 @@ export interface LoginResponse {
 
 export const AuthService = {
   async loginWithGoogle(credential: string): Promise<LoginResponse> {
-    const response = await axiosInstance.post<LoginResponse>("/auth/google", {
-      credential,
-    });
+    const response = await axiosInstance.post<LoginResponse>(
+      "/api/user/google",
+      {
+        token: credential,
+      },
+    );
     return response.data;
   },
 

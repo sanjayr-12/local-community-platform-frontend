@@ -16,22 +16,25 @@ export default function Home() {
 
   useEffect(() => {
     if (!hasHydrated) return;
-
     if (!user) {
       router.push("/get-started");
-    } else {
-      authService
-        .getMe()
-        .then((freshUser: User) => {
-          if (token && JSON.stringify(freshUser) !== JSON.stringify(user)) {
-            login(freshUser, token);
-          }
-        })
-        .catch((error: unknown) => {
-          console.error("Failed to fetch user profile:", error);
-        });
     }
-  }, [user, router, login, token, hasHydrated]);
+  }, [hasHydrated, user, router]);
+
+  useEffect(() => {
+    if (!hasHydrated || !user || !token) return;
+    authService
+      .getMe()
+      .then((freshUser: User) => {
+        if (JSON.stringify(freshUser) !== JSON.stringify(user)) {
+          login(freshUser, token);
+        }
+      })
+      .catch((error: unknown) => {
+        console.error("Failed to fetch user profile:", error);
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasHydrated]);
 
   if (!user) {
     return null;

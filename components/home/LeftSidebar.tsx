@@ -20,7 +20,7 @@ interface LeftSidebarProps {
 const sidebarItems = [
   { icon: Home, label: "Home Feed", href: "/" },
   { icon: Calendar, label: "Local Events", href: "/events" },
-  { icon: Heart, label: "Volunteer", href: "/volunteer" },
+  { icon: Heart, label: "My Posts", href: "/my-posts" },
   { icon: Megaphone, label: "Announcements", href: "/announcements" },
   { icon: Bookmark, label: "Saved Posts", href: "/saved" },
   { icon: Users, label: "Groups", href: "/groups" },

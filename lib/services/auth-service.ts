@@ -31,10 +31,10 @@ export const authService = {
   },
 
   async getMe(): Promise<User> {
-    const response = await axiosInstance.get<{ status: string; user: User[] }>(
+    const response = await axiosInstance.get<{ status: string; user: User }>(
       "/api/user/me",
     );
-    return response.data.user[0];
+    return response.data.user;
   },
 
   logout() {},

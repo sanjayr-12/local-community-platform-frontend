@@ -1,52 +1,151 @@
 "use client";
 
+import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { PenSquare, Image as ImageIcon, Smile } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  MapPin,
+  PenSquare,
+  Loader2,
+  AlertTriangle,
+  CheckCircle2,
+} from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
+import { useLocation } from "@/lib/hooks/useLocation";
+import { postService } from "@/lib/services/post-service";
+
+const DUMMY_IMAGE_URL = "https://placehold.co/800x400/png?text=Community+Post";
 
 export function Feed() {
   const user = useAuthStore((state) => state.user);
+  const { lat, long, status } = useLocation();
+
+  const [content, setContent] = useState("");
+  const [isPosting, setIsPosting] = useState(false);
+  const [postSuccess, setPostSuccess] = useState<string | null>(null);
+  const [postError, setPostError] = useState<string | null>(null);
+
+  const handlePost = async () => {
+    const currentLat = lat;
+    const currentLong = long;
+    if (!content.trim() || !currentLat || !currentLong) return;
+
+    setIsPosting(true);
+    setPostSuccess(null);
+    setPostError(null);
+
+    try {
+      await postService.createPost({
+        content: content.trim(),
+        image_url: DUMMY_IMAGE_URL,
+        lat: currentLat,
+        long: currentLong,
+      });
+      setPostSuccess("Post created!");
+      setContent("");
+    } catch {
+      setPostError("Something went wrong. Please try again.");
+    } finally {
+      setIsPosting(false);
+    }
+  };
+
+  if (status === "idle" || status === "loading") {
+    return (
+      <div className="flex w-full flex-col items-center justify-center gap-4 py-24 text-center">
+        <Loader2 className="text-muted-foreground h-8 w-8 animate-spin" />
+        <p className="text-muted-foreground text-sm">
+          Detecting your location…
+        </p>
+      </div>
+    );
+  }
+
+  if (status === "denied") {
+    return (
+      <div className="flex w-full flex-col items-center justify-center gap-6 px-4 py-24 text-center">
+        <div className="rounded-full bg-amber-500/10 p-6">
+          <MapPin className="h-10 w-10 text-amber-500" />
+        </div>
+        <div className="space-y-2">
+          <h3 className="text-xl font-bold">Location Access Required</h3>
+          <p className="text-muted-foreground mx-auto max-w-sm text-sm leading-relaxed">
+            This app shows posts from people near you. Please enable location
+            access in your browser settings and reload the page to continue.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-2 text-xs text-amber-600">
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+          <span>
+            Tip: Click the lock icon in your address bar to manage permissions.
+          </span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex w-full flex-col gap-6 py-4">
       <Card className="bg-muted/40 border-none p-4 shadow-sm">
         <div className="flex gap-4">
-          <Avatar>
+          <Avatar className="mt-1 shrink-0">
             <AvatarImage src={user?.picture} />
             <AvatarFallback>{user?.name?.[0]}</AvatarFallback>
           </Avatar>
-          <div className="flex-1">
-            <Button
-              variant="ghost"
-              className="text-muted-foreground bg-background hover:bg-background/80 h-10 w-full justify-start rounded-full border px-4"
-            >
-              What&apos;s happening in your community?
-            </Button>
-            <div className="mt-4 flex items-center justify-between pl-2">
-              <div className="flex gap-2">
+          <div className="flex flex-1 flex-col gap-3">
+            <Textarea
+              placeholder="What's happening in your community?"
+              value={content}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
+                setContent(e.target.value);
+                setPostSuccess(null);
+                setPostError(null);
+              }}
+              className="bg-background min-h-20 resize-none rounded-2xl border px-4 py-3 text-sm focus-visible:ring-1"
+              maxLength={500}
+            />
+
+            {postSuccess && (
+              <div className="flex items-center gap-2 rounded-lg bg-emerald-500/10 px-3 py-2 text-xs text-emerald-600">
+                <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                {postSuccess}
+              </div>
+            )}
+            {postError && (
+              <div className="text-destructive bg-destructive/10 flex items-center gap-2 rounded-lg px-3 py-2 text-xs">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                {postError}
+              </div>
+            )}
+
+            <div className="flex items-center justify-between">
+              <div className="text-muted-foreground flex items-center gap-1.5 text-xs">
+                <MapPin className="h-3.5 w-3.5 text-green-500" />
+                <span>Location detected</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-muted-foreground text-xs">
+                  {content.length}/500
+                </span>
                 <Button
-                  variant="ghost"
                   size="sm"
-                  className="text-muted-foreground gap-2"
+                  className="cursor-pointer rounded-full px-6"
+                  disabled={!content.trim() || isPosting}
+                  onClick={handlePost}
                 >
-                  <ImageIcon className="h-4 w-4 text-blue-500" />
-                  Media
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-muted-foreground gap-2"
-                >
-                  <Smile className="h-4 w-4 text-yellow-500" />
-                  Activity
+                  {isPosting ? (
+                    <>
+                      <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                      Posting…
+                    </>
+                  ) : (
+                    "Post"
+                  )}
                 </Button>
               </div>
-              <Button size="sm" className="rounded-full px-6">
-                Post
-              </Button>
             </div>
           </div>
         </div>
@@ -62,12 +161,9 @@ export function Feed() {
           <h3 className="text-xl font-bold">No posts yet</h3>
           <p className="text-muted-foreground mx-auto max-w-sm">
             Your feed is empty. Be the first to share something with your
-            community or follow topics to see more.
+            community!
           </p>
         </div>
-        <Button variant="outline" className="mt-4">
-          Find Topics
-        </Button>
       </div>
     </div>
   );

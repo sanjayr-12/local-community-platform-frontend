@@ -32,6 +32,11 @@ export function useLocation(): LocationState {
       () => {
         setState({ lat: null, long: null, status: "denied" });
       },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      }
     );
   }, [state.status]);
 

@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/store/useAuthStore";
-import { TrendingUp, MapPin } from "lucide-react";
+import { TrendingUp } from "lucide-react";
 
 export function RightSidebar() {
   const user = useAuthStore((state) => state.user);
@@ -31,11 +31,6 @@ export function RightSidebar() {
             <p className="text-muted-foreground line-clamp-2 text-sm">
               Community member. Passionate about local events and improvements.
             </p>
-
-            <div className="text-muted-foreground flex items-center gap-2 pt-2 text-xs">
-              <MapPin className="h-3 w-3" />
-              <span>New York, NY</span>
-            </div>
           </div>
         </CardContent>
       </Card>

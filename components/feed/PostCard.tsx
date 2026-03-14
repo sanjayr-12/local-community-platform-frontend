@@ -1,11 +1,16 @@
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Post } from "@/lib/services/post-service";
+import { Post, postService } from "@/lib/services/post-service";
 import Image from "next/image";
-import { MapPin, Clock } from "lucide-react";
+import { MapPin, Clock, Bookmark } from "lucide-react";
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { useToast } from "@/lib/hooks/use-toast";
 
 interface PostCardProps {
   post: Post;
+  showSaveIcon?: boolean;
 }
 
 function formatTime(dateString: string) {
@@ -19,7 +24,55 @@ function formatTime(dateString: string) {
   return `${Math.floor(diffInSeconds / 86400)}d`;
 }
 
-export function PostCard({ post }: PostCardProps) {
+export function PostCard({ post, showSaveIcon = true }: PostCardProps) {
+  const { toast } = useToast();
+  const currentPostId = post.postId || post.id;
+  const currentDistrict = post.district || post.districtTag;
+
+  const [isSaved, setIsSaved] = useState(post.isSaved || false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (isSaving || !currentPostId) return;
+
+    setIsSaving(true);
+    try {
+      if (isSaved) {
+        // Handle Unsave
+        const response = await postService.unsavePost(currentPostId);
+        if (response.status === "ok") {
+          setIsSaved(false);
+          toast({
+            title: "Post removed",
+            description: "The post has been removed from your saved items.",
+          });
+        }
+      } else {
+        // Handle Save
+        const response = await postService.savePost(currentPostId);
+        if (response.status === "ok") {
+          setIsSaved(true);
+          toast({
+            title: "Post saved",
+            description: "You can find this post in your Saved Posts.",
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Failed to toggle save post:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: `Failed to ${isSaved ? "unsave" : "save"} the post. Please try again.`,
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <Card className="bg-muted/40 border-border hover:bg-muted/60 flex w-full flex-col gap-4 p-4 shadow-sm transition-colors duration-200">
       <div className="flex flex-col gap-3">
@@ -39,17 +92,34 @@ export function PostCard({ post }: PostCardProps) {
             </div>
           </div>
 
-          <div className="text-muted-foreground mt-1 flex items-center gap-3 text-xs">
-            {post.district && (
-              <div className="bg-muted/50 flex items-center gap-1 rounded-md px-2 py-1">
-                <MapPin className="text-primary h-3 w-3" />
-                <span>{post.district}</span>
+          <div className="flex items-center gap-1">
+            <div className="text-muted-foreground mt-1 flex items-center gap-3 text-xs">
+              {currentDistrict && (
+                <div className="bg-muted/50 flex items-center gap-1 rounded-md px-2 py-1">
+                  <MapPin className="text-primary h-3 w-3" />
+                  <span>{currentDistrict}</span>
+                </div>
+              )}
+              <div className="flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                <span>{formatTime(post.createdAt)}</span>
               </div>
-            )}
-            <div className="flex items-center gap-1">
-              <Clock className="h-3 w-3" />
-              <span>{formatTime(post.createdAt)}</span>
             </div>
+            {showSaveIcon && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn(
+                  "h-8 w-8 rounded-full cursor-pointer",
+                  isSaved ? "text-primary" : "text-muted-foreground",
+                )}
+                onClick={handleSave}
+                disabled={isSaving}
+              >
+                <Bookmark className={cn("h-4 w-4", isSaved && "fill-current")} />
+                <span className="sr-only">Save post</span>
+              </Button>
+            )}
           </div>
         </div>
 

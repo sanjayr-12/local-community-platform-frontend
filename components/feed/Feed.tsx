@@ -22,6 +22,7 @@ import { useLocation } from "@/lib/hooks/useLocation";
 import { postService, Post } from "@/lib/services/post-service";
 import Image from "next/image";
 import { PostCard } from "./PostCard";
+import { useToast } from "@/lib/hooks/use-toast";
 
 interface CreatePostComponentProps {
   user: User | null;
@@ -206,6 +207,7 @@ const CreatePostComponent = ({
 );
 
 export function Feed() {
+  const { toast } = useToast();
   const user = useAuthStore((state) => state.user);
   const { lat, long, status } = useLocation();
 
@@ -270,6 +272,10 @@ export function Feed() {
         long: currentLong,
       });
       setPostSuccess("Post created!");
+      toast({
+        title: "Success",
+        description: "Your post has been shared with the community.",
+      });
       setContent("");
       setImageUrl(null);
       setPublicId(null);
@@ -277,6 +283,11 @@ export function Feed() {
       fetchPosts();
     } catch {
       setPostError("Something went wrong. Please try again.");
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to create post. Please try again.",
+      });
     } finally {
       setIsPosting(false);
     }
@@ -285,11 +296,20 @@ export function Feed() {
   const handleImageFile = async (file: File) => {
     if (!file.type.startsWith("image/")) {
       setPostError("Please upload a valid image file.");
+      toast({
+        variant: "destructive",
+        title: "Invalid file",
+        description: "Please select an image file.",
+      });
       return;
     }
 
     setIsUploadingImage(true);
     setPostError(null);
+    toast({
+      title: "Uploading image...",
+      description: "Please wait while we process your image.",
+    });
 
     const reader = new FileReader();
     reader.onloadend = async () => {
@@ -300,12 +320,26 @@ export function Feed() {
         if (res.status === "ok" || res.data?.url) {
           setImageUrl(res.data.url);
           setPublicId(res.data.publicId);
+          toast({
+            title: "Image uploaded",
+            description: "Your image is ready to be posted.",
+          });
         } else {
           setPostError("Failed to upload image. Please try again.");
+          toast({
+            variant: "destructive",
+            title: "Upload failed",
+            description: "Could not upload the image. Please try again.",
+          });
         }
       } catch (error) {
         console.error("Image upload failed:", error);
         setPostError("Failed to upload image. Please try again.");
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Something went wrong during upload.",
+        });
       } finally {
         setIsUploadingImage(false);
       }
@@ -477,7 +511,7 @@ export function Feed() {
       ) : posts.length > 0 ? (
         <div className="flex flex-col gap-4">
           {posts.map((post) => (
-            <PostCard key={post.postId} post={post} />
+            <PostCard key={post.postId || post.id} post={post} />
           ))}
         </div>
       ) : (

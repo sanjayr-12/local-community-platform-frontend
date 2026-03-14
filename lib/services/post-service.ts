@@ -22,16 +22,19 @@ export interface UploadImageResponse {
 }
 
 export interface Post {
-  postId: number;
+  postId?: number;
+  id?: number; // Alias for postId in some API responses
   content: string;
   imageUrl: string | null;
-  district: string;
-  publicId: string | null;
+  district?: string;
+  districtTag?: string; // Alias for district in some API responses
+  publicId?: string | null;
   createdAt: string;
-  userId: number;
+  userId?: number;
   name: string;
   username: string;
   picture: string;
+  isSaved?: boolean;
 }
 
 export interface GetPostsResponse {
@@ -41,15 +44,35 @@ export interface GetPostsResponse {
 }
 
 export const postService = {
-  async getPosts(lat: number | string, long: number | string): Promise<GetPostsResponse> {
+  async getPosts(
+    lat: number | string,
+    long: number | string,
+  ): Promise<GetPostsResponse> {
     const response = await axiosInstance.get<GetPostsResponse>(
-      `/api/post?lat=${lat}&long=${long}`
+      `/api/post?lat=${lat}&long=${long}`,
     );
     return response.data;
   },
 
   async getMyPosts(): Promise<GetPostsResponse> {
     const response = await axiosInstance.get<GetPostsResponse>("/api/post/my");
+    return response.data;
+  },
+
+  async getSavedPosts(): Promise<GetPostsResponse> {
+    const response = await axiosInstance.get<GetPostsResponse>(
+      "/api/post/save",
+    );
+    return response.data;
+  },
+
+  async savePost(postId: number): Promise<{ status: string; data?: any }> {
+    const response = await axiosInstance.post("/api/post/save", { postId });
+    return response.data;
+  },
+
+  async unsavePost(postId: number): Promise<{ status: string; data?: any }> {
+    const response = await axiosInstance.delete(`/api/post/save/${postId}`);
     return response.data;
   },
 

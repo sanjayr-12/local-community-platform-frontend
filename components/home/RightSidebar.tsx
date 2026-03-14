@@ -22,15 +22,22 @@ export function RightSidebar() {
               </AvatarFallback>
             </Avatar>
           </div>
-          <div className="mt-12 space-y-2">
+          <div className="mt-12 space-y-3">
             <div>
               <h3 className="text-lg leading-none font-bold">{user?.name}</h3>
               <p className="text-muted-foreground text-sm">@{user?.username}</p>
             </div>
 
-            <p className="text-muted-foreground line-clamp-2 text-sm">
-              Community member. Passionate about local events and improvements.
-            </p>
+            {user?.bio && (
+              <p className="text-muted-foreground line-clamp-2 text-sm">
+                {user.bio}
+              </p>
+            )}
+
+            <div className="flex items-center gap-1.5 text-xs font-medium">
+              <span className="text-foreground">{user?.totalNumOfPosts || 0}</span>
+              <span className="text-muted-foreground">posts</span>
+            </div>
           </div>
         </CardContent>
       </Card>

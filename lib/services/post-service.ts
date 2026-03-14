@@ -48,6 +48,11 @@ export const postService = {
     return response.data;
   },
 
+  async getMyPosts(): Promise<GetPostsResponse> {
+    const response = await axiosInstance.get<GetPostsResponse>("/api/post/my");
+    return response.data;
+  },
+
   async createPost(payload: CreatePostPayload): Promise<CreatePostResponse> {
     const response = await axiosInstance.post<CreatePostResponse>(
       "/api/post",

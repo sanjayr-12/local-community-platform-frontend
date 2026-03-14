@@ -4,14 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import {
-  Home,
-  Calendar,
-  Heart,
-  Megaphone,
-  Bookmark,
-  Users,
-} from "lucide-react";
+import { Home, FileText, Megaphone, Bookmark } from "lucide-react";
 
 interface LeftSidebarProps {
   mobile?: boolean;
@@ -19,11 +12,9 @@ interface LeftSidebarProps {
 
 const sidebarItems = [
   { icon: Home, label: "Home Feed", href: "/" },
-  { icon: Calendar, label: "Local Events", href: "/events" },
-  { icon: Heart, label: "My Posts", href: "/my-posts" },
+  { icon: FileText, label: "My Posts", href: "/my-posts" },
   { icon: Megaphone, label: "Announcements", href: "/announcements" },
   { icon: Bookmark, label: "Saved Posts", href: "/saved" },
-  { icon: Users, label: "Groups", href: "/groups" },
 ];
 
 export function LeftSidebar({ mobile }: LeftSidebarProps) {

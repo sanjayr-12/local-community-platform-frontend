@@ -7,8 +7,9 @@ export interface User {
   username: string;
   email: string;
   picture?: string;
-  createdAt: string;
-  updatedAt: string;
+  bio?: string | null;
+  createdat: string;
+  totalNumOfPosts: string;
 }
 
 export interface AuthState {

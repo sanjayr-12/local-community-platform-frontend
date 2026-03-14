@@ -10,8 +10,9 @@ export interface LoginResponse {
       username: string;
       email: string;
       picture?: string;
-      createdAt: string;
-      updatedAt: string;
+      bio?: string | null;
+      createdat: string;
+      totalNumOfPosts: string;
     };
     token: string;
   };
@@ -31,10 +32,11 @@ export const authService = {
   },
 
   async getMe(): Promise<User> {
-    const response = await axiosInstance.get<{ status: string; user: User }>(
-      "/api/user/me",
-    );
-    return response.data.user;
+    const response = await axiosInstance.get<{
+      status: string;
+      message: User[];
+    }>("/api/user/me/v2");
+    return response.data.message[0];
   },
 
   logout() {},

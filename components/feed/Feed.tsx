@@ -281,12 +281,16 @@ export function Feed() {
       setPublicId(null);
       setIsMobileCreateView(false);
       fetchPosts();
-    } catch {
-      setPostError("Something went wrong. Please try again.");
+    } catch (err) {
+      // Show the real API error (e.g. moderation rejection) if available
+      const apiMessage =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        "Something went wrong. Please try again.";
+      setPostError(apiMessage);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to create post. Please try again.",
+        description: apiMessage,
       });
     } finally {
       setIsPosting(false);

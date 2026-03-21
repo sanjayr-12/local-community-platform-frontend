@@ -23,11 +23,11 @@ export interface UploadImageResponse {
 
 export interface Post {
   postId?: number;
-  id?: number; // Alias for postId in some API responses
+  id?: number;
   content: string;
   imageUrl: string | null;
   district?: string;
-  districtTag?: string; // Alias for district in some API responses
+  districtTag?: string;
   publicId?: string | null;
   createdAt: string;
   userId?: number;
@@ -35,11 +35,41 @@ export interface Post {
   username: string;
   picture: string;
   isSaved?: boolean;
+  isLiked?: boolean;
+  likeCount?: number;
+  commentCount?: number;
+  viewCount?: number;
+}
+
+export interface Comment {
+  commentId: number;
+  postId: number;
+  content: string;
+  userId: number;
+  name: string;
+  username: string;
+  picture: string;
 }
 
 export interface GetPostsResponse {
   status: string;
   data?: Post[];
+  message?: string;
+}
+
+export interface GetCommentsResponse {
+  status: string;
+  data?: Comment[];
+  message?: string;
+}
+
+export interface TrendingResponse {
+  status: string;
+  data?: {
+    district: string;
+    keywords: string[];
+    computed_at: string | null;
+  };
   message?: string;
 }
 
@@ -76,6 +106,40 @@ export const postService = {
     return response.data;
   },
 
+  async likePost(postId: number): Promise<{ status: string }> {
+    const response = await axiosInstance.post("/api/like", { postId });
+    return response.data;
+  },
+
+  async unlikePost(postId: number): Promise<{ status: string }> {
+    const response = await axiosInstance.delete(`/api/like/${postId}`);
+    return response.data;
+  },
+
+  async getComments(postId: number): Promise<GetCommentsResponse> {
+    const response = await axiosInstance.get<GetCommentsResponse>(
+      `/api/comment/${postId}`,
+    );
+    return response.data;
+  },
+
+  async addComment(
+    postId: number,
+    content: string,
+  ): Promise<{ status: string; data?: Comment }> {
+    const response = await axiosInstance.post(`/api/comment/${postId}`, {
+      content,
+    });
+    return response.data;
+  },
+
+  async getTrending(district: string): Promise<TrendingResponse> {
+    const response = await axiosInstance.get<TrendingResponse>(
+      `/api/post/trending?district=${encodeURIComponent(district)}`,
+    );
+    return response.data;
+  },
+
   async createPost(payload: CreatePostPayload): Promise<CreatePostResponse> {
     const response = await axiosInstance.post<CreatePostResponse>(
       "/api/post",
@@ -92,3 +156,4 @@ export const postService = {
     return response.data;
   },
 };
+

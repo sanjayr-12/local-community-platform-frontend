@@ -43,6 +43,30 @@ function formatTime(dateString: string) {
   return `${Math.floor(diffInSeconds / 86400)}d`;
 }
 
+function renderContentWithLinks(content: string) {
+  // Regex to match URLs (http or https)
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const parts = content.split(urlRegex);
+
+  return parts.map((part, i) => {
+    if (part.match(urlRegex)) {
+      return (
+        <a
+          key={i}
+          href={part}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-primary hover:underline cursor-pointer font-medium"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {part}
+        </a>
+      );
+    }
+    return part;
+  });
+}
+
 export function PostCard({ post, showSaveIcon = true, onDeleted }: PostCardProps) {
   const { toast } = useToast();
   const currentUser = useAuthStore((state) => state.user);
@@ -242,12 +266,11 @@ export function PostCard({ post, showSaveIcon = true, onDeleted }: PostCardProps
       </div>
 
       {/* Content */}
-      <p className="text-sm leading-relaxed whitespace-pre-wrap">
-        {post.content}
+      <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+        {renderContentWithLinks(post.content)}
       </p>
 
-      {post.imageUrl && (
-        <div className="border-muted-foreground/20 relative mt-1 w-full overflow-hidden rounded-xl border">
+      {post.imageUrl && (        <div className="border-muted-foreground/20 relative mt-1 w-full overflow-hidden rounded-xl border">
           <Image
             src={post.imageUrl}
             alt="Post attachment"

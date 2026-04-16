@@ -209,7 +209,7 @@ const CreatePostComponent = ({
 export function Feed() {
   const { toast } = useToast();
   const user = useAuthStore((state) => state.user);
-  const { lat, long, status } = useLocation();
+  const { lat, long, status, error, reason, requestLocation } = useLocation();
 
   const [isMobileCreateView, setIsMobileCreateView] = useState(false);
 
@@ -392,24 +392,41 @@ export function Feed() {
     );
   }
 
-  if (status === "denied") {
+  if (status === "denied" || status === "unsupported") {
+    const isInsecureContext = reason === "insecure-context";
+    const title =
+      status === "unsupported"
+        ? "Location Not Supported"
+        : isInsecureContext
+          ? "Secure Connection Required"
+          : "Location Access Required";
+    const helperText =
+      error ??
+      "This app shows posts from people near you. Enable location access and try again.";
+    const tipText =
+      isInsecureContext
+        ? "On phones, http:// local-network URLs will not trigger the browser location prompt. Use HTTPS to test location access."
+        : "Open your browser's site settings and allow location access for this app.";
+
     return (
       <div className="flex w-full flex-col items-center justify-center gap-6 px-4 py-24 text-center">
         <div className="rounded-full bg-amber-500/10 p-6">
           <MapPin className="h-10 w-10 text-amber-500" />
         </div>
         <div className="space-y-2">
-          <h3 className="text-xl font-bold">Location Access Required</h3>
+          <h3 className="text-xl font-bold">{title}</h3>
           <p className="text-muted-foreground mx-auto max-w-sm text-sm leading-relaxed">
-            This app shows posts from people near you. Please enable location
-            access in your browser settings and reload the page to continue.
+            {helperText}
           </p>
         </div>
+        {status !== "unsupported" && !isInsecureContext && (
+          <Button className="rounded-full px-6" onClick={requestLocation}>
+            Try Again
+          </Button>
+        )}
         <div className="flex items-center gap-2 rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-2 text-xs text-amber-600">
           <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-          <span>
-            Tip: Click the lock icon in your address bar to manage permissions.
-          </span>
+          <span>{tipText}</span>
         </div>
       </div>
     );

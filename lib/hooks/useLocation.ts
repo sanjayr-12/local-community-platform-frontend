@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect } from "react";
+import { create } from "zustand";
 
 export type LocationStatus =
   | "idle"
@@ -20,27 +21,50 @@ export type LocationErrorReason =
 export interface LocationState {
   lat: string | null;
   long: string | null;
+  accuracy: number | null;
   status: LocationStatus;
   error: string | null;
   reason: LocationErrorReason | null;
-  requestLocation: () => void;
+  requestLocation: (force?: boolean) => void;
 }
 
+const DESIRED_ACCURACY_METERS = 5000;
+const LOCATION_SETTLE_TIMEOUT_MS = 12000;
 const LOCATION_OPTIONS: PositionOptions = {
   enableHighAccuracy: true,
-  timeout: 10000,
+  timeout: LOCATION_SETTLE_TIMEOUT_MS,
   maximumAge: 0,
 };
 
 const INSECURE_CONTEXT_MESSAGE =
   "Location only works on HTTPS or localhost. If you are opening the app on your phone through a local network HTTP URL, the browser will block the location prompt.";
 
-function getGeoErrorState(error: GeolocationPositionError): Omit<LocationState, "requestLocation"> {
+let activeWatchId: number | null = null;
+let activeTimerId: number | null = null;
+let bestPosition: GeolocationPosition | null = null;
+let activeRequestToken = 0;
+
+function clearActiveTracking() {
+  if (typeof window !== "undefined" && activeWatchId !== null) {
+    navigator.geolocation.clearWatch(activeWatchId);
+  }
+  if (typeof window !== "undefined" && activeTimerId !== null) {
+    window.clearTimeout(activeTimerId);
+  }
+  activeWatchId = null;
+  activeTimerId = null;
+  bestPosition = null;
+}
+
+function getGeoErrorState(
+  error: GeolocationPositionError,
+): Omit<LocationState, "requestLocation"> {
   switch (error.code) {
     case error.PERMISSION_DENIED:
       return {
         lat: null,
         long: null,
+        accuracy: null,
         status: "denied",
         error:
           "Location access is blocked for this site. Allow it in your browser or device settings and try again.",
@@ -50,6 +74,7 @@ function getGeoErrorState(error: GeolocationPositionError): Omit<LocationState, 
       return {
         lat: null,
         long: null,
+        accuracy: null,
         status: "denied",
         error:
           "Your device could not determine its location. Turn on location services and try again.",
@@ -59,6 +84,7 @@ function getGeoErrorState(error: GeolocationPositionError): Omit<LocationState, 
       return {
         lat: null,
         long: null,
+        accuracy: null,
         status: "denied",
         error:
           "Location detection timed out. Move to an area with a better signal and try again.",
@@ -68,6 +94,7 @@ function getGeoErrorState(error: GeolocationPositionError): Omit<LocationState, 
       return {
         lat: null,
         long: null,
+        accuracy: null,
         status: "denied",
         error: "Location could not be detected. Please try again.",
         reason: "unknown",
@@ -79,6 +106,7 @@ function getUnsupportedState(): Omit<LocationState, "requestLocation"> {
   return {
     lat: null,
     long: null,
+    accuracy: null,
     status: "unsupported",
     error: "This browser does not support location access.",
     reason: "unsupported",
@@ -89,84 +117,137 @@ function getInsecureContextState(): Omit<LocationState, "requestLocation"> {
   return {
     lat: null,
     long: null,
+    accuracy: null,
     status: "denied",
     error: INSECURE_CONTEXT_MESSAGE,
     reason: "insecure-context",
   };
 }
 
-export function useLocation(): LocationState {
-  const [state, setState] = useState<Omit<LocationState, "requestLocation">>(() => {
-    if (typeof window === "undefined") {
-      return {
-        lat: null,
-        long: null,
-        status: "idle",
-        error: null,
-        reason: null,
-      };
-    }
+function getGrantedState(
+  position: GeolocationPosition,
+): Omit<LocationState, "requestLocation"> {
+  return {
+    lat: String(position.coords.latitude),
+    long: String(position.coords.longitude),
+    accuracy: Math.round(position.coords.accuracy),
+    status: "granted",
+    error: null,
+    reason: null,
+  };
+}
 
-    if (!navigator.geolocation) {
-      return getUnsupportedState();
-    }
-
-    if (!window.isSecureContext) {
-      return getInsecureContextState();
-    }
-
-    return {
-      lat: null,
-      long: null,
-      status: "loading",
-      error: null,
-      reason: null,
-    };
-  });
-
-  const requestLocation = useCallback(() => {
+const useLocationStore = create<LocationState>((set, get) => ({
+  lat: null,
+  long: null,
+  accuracy: null,
+  status: "idle",
+  error: null,
+  reason: null,
+  requestLocation: (force = true) => {
     if (typeof window === "undefined") return;
 
     if (!navigator.geolocation) {
-      setState(getUnsupportedState());
+      set(getUnsupportedState());
       return;
     }
 
     if (!window.isSecureContext) {
-      setState(getInsecureContextState());
+      set(getInsecureContextState());
       return;
     }
 
-    setState((previous) => ({
-      ...previous,
+    const currentStatus = get().status;
+    if (currentStatus === "loading" && !force) {
+      return;
+    }
+
+    activeRequestToken += 1;
+    const requestToken = activeRequestToken;
+    clearActiveTracking();
+
+    set({
+      lat: null,
+      long: null,
+      accuracy: null,
       status: "loading",
       error: null,
       reason: null,
-    }));
-  }, []);
+    });
 
-  useEffect(() => {
-    if (state.status !== "loading") return;
+    const finalizeWithBestPosition = () => {
+      if (requestToken !== activeRequestToken) return;
 
-    navigator.geolocation.getCurrentPosition(
+      const fallbackPosition = bestPosition;
+      clearActiveTracking();
+
+      if (fallbackPosition) {
+        set(getGrantedState(fallbackPosition));
+        return;
+      }
+
+      set({
+        lat: null,
+        long: null,
+        accuracy: null,
+        status: "denied",
+        error:
+          "Location detection timed out. Move to an area with a better signal and try again.",
+        reason: "timeout",
+      });
+    };
+
+    activeWatchId = navigator.geolocation.watchPosition(
       (position) => {
-        setState({
-          lat: String(position.coords.latitude),
-          long: String(position.coords.longitude),
-          status: "granted",
-          error: null,
-          reason: null,
-        });
+        if (requestToken !== activeRequestToken) return;
+
+        if (
+          !bestPosition ||
+          position.coords.accuracy < bestPosition.coords.accuracy
+        ) {
+          bestPosition = position;
+          set({ accuracy: Math.round(position.coords.accuracy) });
+        }
+
+        if (bestPosition.coords.accuracy <= DESIRED_ACCURACY_METERS) {
+          const acceptedPosition = bestPosition;
+          clearActiveTracking();
+          set(getGrantedState(acceptedPosition));
+        }
       },
       (error) => {
-        setState(getGeoErrorState(error));
+        if (requestToken !== activeRequestToken) return;
+
+        const fallbackPosition = bestPosition;
+        clearActiveTracking();
+
+        if (fallbackPosition && error.code !== error.PERMISSION_DENIED) {
+          set(getGrantedState(fallbackPosition));
+          return;
+        }
+
+        set(getGeoErrorState(error));
       },
       LOCATION_OPTIONS,
     );
-  }, [state.status]);
 
-  return {
-    ...state,
-    requestLocation,
-  };
+    activeTimerId = window.setTimeout(
+      finalizeWithBestPosition,
+      LOCATION_SETTLE_TIMEOUT_MS,
+    );
+  },
+}));
+
+export function useLocation(): LocationState {
+  const location = useLocationStore();
+  const status = location.status;
+  const requestLocation = location.requestLocation;
+
+  useEffect(() => {
+    if (status === "idle") {
+      requestLocation(false);
+    }
+  }, [status, requestLocation]);
+
+  return location;
 }

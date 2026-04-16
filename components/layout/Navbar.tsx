@@ -22,9 +22,43 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { LeftSidebar } from "@/components/home/LeftSidebar";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { useLocation } from "@/lib/hooks/useLocation";
+import { Loader2 } from "lucide-react";
 
 export function Navbar() {
   const { user, logout } = useAuthStore();
+  const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
+  const { lat, long } = useLocation();
+
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!searchQuery.trim() || isSearching) return;
+
+    setIsSearching(true);
+    let targetDistrict = "";
+
+    try {
+      if (lat && long) {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${long}&format=json&accept-language=en`,
+        );
+        const data = await res.json();
+        targetDistrict = data?.address?.state_district || "";
+      }
+    } catch (err) {
+      console.error("Failed to fetch district for search:", err);
+    } finally {
+      setIsSearching(false);
+      const url = `/topic/${encodeURIComponent(searchQuery.trim())}${
+        targetDistrict ? `?district=${encodeURIComponent(targetDistrict)}` : ""
+      }`;
+      router.push(url);
+    }
+  };
 
   return (
     <header className="bg-background/95 supports-backdrop-filter:bg-background/60 sticky top-0 z-50 w-full border-b backdrop-blur">
@@ -58,14 +92,24 @@ export function Navbar() {
         </div>
 
         <div className="flex flex-1 items-center space-x-2 md:justify-center">
-          <div className="text-muted-foreground relative w-full max-w-xl">
-            <Search className="absolute top-2.5 left-2.5 h-4 w-4" />
+          <form 
+            onSubmit={handleSearch} 
+            className="text-muted-foreground relative w-full max-w-xl"
+          >
+            {isSearching ? (
+              <Loader2 className="absolute top-2.5 left-3 h-4 w-4 animate-spin text-primary" />
+            ) : (
+              <Search className="absolute top-2.5 left-3 h-4 w-4" />
+            )}
             <Input
               type="search"
               placeholder="Search posts, events, or people..."
               className="bg-muted w-full rounded-full pl-9"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              disabled={isSearching}
             />
-          </div>
+          </form>
         </div>
 
         <div className="flex items-center gap-2 md:gap-4">

@@ -420,7 +420,10 @@ export function Feed() {
           </p>
         </div>
         {status !== "unsupported" && !isInsecureContext && (
-          <Button className="rounded-full px-6" onClick={requestLocation}>
+          <Button
+            className="rounded-full px-6"
+            onClick={() => requestLocation()}
+          >
             Try Again
           </Button>
         )}

@@ -28,10 +28,16 @@ interface PostCardProps {
 }
 
 function formatTime(dateString: string) {
-  const date = new Date(dateString);
+  let normalizedDate = dateString;
+  if (!normalizedDate.includes("T")) normalizedDate = normalizedDate.replace(" ", "T");
+  if (!normalizedDate.endsWith("Z")) normalizedDate += "Z";
+
+  const date = new Date(normalizedDate);
   const now = new Date();
-  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-  if (diffInSeconds < 60) return `${diffInSeconds || 0}s`;
+  // Math.max to prevent negative seconds if the post was created < 1 second ago
+  const diffInSeconds = Math.max(0, Math.floor((now.getTime() - date.getTime()) / 1000));
+  
+  if (diffInSeconds < 60) return `${diffInSeconds}s`;
   if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m`;
   if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h`;
   return `${Math.floor(diffInSeconds / 86400)}d`;

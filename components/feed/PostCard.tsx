@@ -11,6 +11,7 @@ import {
   Heart,
   MessageCircle,
   Eye,
+  Trash2,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -18,10 +19,12 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/lib/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
 import { CommentSection } from "./CommentSection";
+import { useAuthStore } from "@/store/useAuthStore";
 
 interface PostCardProps {
   post: Post;
   showSaveIcon?: boolean;
+  onDeleted?: (postId: number) => void;
 }
 
 function formatTime(dateString: string) {
@@ -34,10 +37,13 @@ function formatTime(dateString: string) {
   return `${Math.floor(diffInSeconds / 86400)}d`;
 }
 
-export function PostCard({ post, showSaveIcon = true }: PostCardProps) {
+export function PostCard({ post, showSaveIcon = true, onDeleted }: PostCardProps) {
   const { toast } = useToast();
+  const currentUser = useAuthStore((state) => state.user);
   const currentPostId = post.postId || post.id;
   const currentDistrict = post.district || post.districtTag;
+
+  const isOwner = currentUser?.id !== undefined && post.userId === currentUser.id;
 
   const [isSaved, setIsSaved] = useState(post.isSaved || false);
   const [isSaving, setIsSaving] = useState(false);
@@ -45,6 +51,10 @@ export function PostCard({ post, showSaveIcon = true }: PostCardProps) {
   const [isLiked, setIsLiked] = useState(post.isLiked || false);
   const [likeCount, setLikeCount] = useState(post.likeCount ?? 0);
   const [isLiking, setIsLiking] = useState(false);
+
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isDeleted, setIsDeleted] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const [showComments, setShowComments] = useState(false);
   const commentCount = post.commentCount ?? 0;
@@ -85,7 +95,6 @@ export function PostCard({ post, showSaveIcon = true }: PostCardProps) {
     e.stopPropagation();
     if (isLiking || !currentPostId) return;
 
-    // Optimistic update
     const wasLiked = isLiked;
     setIsLiked(!wasLiked);
     setLikeCount((c) => (wasLiked ? c - 1 : c + 1));
@@ -98,7 +107,6 @@ export function PostCard({ post, showSaveIcon = true }: PostCardProps) {
         await postService.likePost(currentPostId);
       }
     } catch {
-      // Revert on failure
       setIsLiked(wasLiked);
       setLikeCount((c) => (wasLiked ? c + 1 : c - 1));
       toast({
@@ -110,6 +118,57 @@ export function PostCard({ post, showSaveIcon = true }: PostCardProps) {
       setIsLiking(false);
     }
   };
+
+  const handleDelete = async () => {
+    if (!currentPostId || isDeleting) return;
+    setIsDeleting(true);
+    try {
+      const res = await postService.deletePost(currentPostId);
+      if (res.status === "ok") {
+        setIsDeleted(true);
+        toast({ title: "Post deleted", description: "Your post has been removed." });
+        onDeleted?.(currentPostId);
+      } else {
+        toast({ variant: "destructive", title: "Error", description: res.message || "Failed to delete." });
+      }
+    } catch {
+      toast({ variant: "destructive", title: "Error", description: "Could not delete the post." });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  if (isDeleted) return null;
+
+  // Inline delete confirmation mode
+  if (showDeleteConfirm) {
+    return (
+      <Card className="bg-destructive/10 border-destructive/20 flex w-full flex-col gap-4 p-5 shadow-sm">
+        <div>
+          <h3 className="text-lg font-bold text-foreground">Delete this post?</h3>
+          <p className="text-muted-foreground text-sm mt-1">
+            This will permanently delete the post and all its comments and likes. This action cannot be undone.
+          </p>
+        </div>
+        <div className="flex gap-3 justify-end mt-2">
+          <Button
+            variant="ghost"
+            onClick={() => setShowDeleteConfirm(false)}
+            disabled={isDeleting}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={handleDelete}
+            disabled={isDeleting}
+          >
+            {isDeleting ? "Deleting..." : "Yes, Delete"}
+          </Button>
+        </div>
+      </Card>
+    );
+  }
 
   return (
     <Card className="bg-muted/40 border-border hover:bg-muted/60 flex w-full flex-col gap-3 p-4 shadow-sm transition-colors duration-200">
@@ -143,6 +202,21 @@ export function PostCard({ post, showSaveIcon = true }: PostCardProps) {
               <span>{formatTime(post.createdAt)}</span>
             </div>
           </div>
+
+          {/* Delete button — only for post owner */}
+          {isOwner && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-full text-muted-foreground hover:text-destructive cursor-pointer"
+              disabled={isDeleting}
+              onClick={() => setShowDeleteConfirm(true)}
+            >
+              <Trash2 className="h-4 w-4" />
+              <span className="sr-only">Delete post</span>
+            </Button>
+          )}
+
           {showSaveIcon && (
             <Button
               variant="ghost"

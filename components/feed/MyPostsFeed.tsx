@@ -73,6 +73,7 @@ export function MyPostsFeed() {
               key={post.postId || post.id}
               post={post}
               showSaveIcon={false}
+              onDeleted={(id) => setPosts(prev => prev.filter(p => (p.postId || p.id) !== id))}
             />
           ))}
         </div>

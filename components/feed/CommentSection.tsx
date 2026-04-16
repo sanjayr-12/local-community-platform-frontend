@@ -4,10 +4,11 @@ import { useState, useEffect, useRef } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, Send } from "lucide-react";
+import { Loader2, Send, Trash2 } from "lucide-react";
 import { Comment, postService } from "@/lib/services/post-service";
 import { useAuthStore } from "@/store/useAuthStore";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/lib/hooks/use-toast";
 
 interface CommentSectionProps {
   postId: number;
@@ -15,15 +16,16 @@ interface CommentSectionProps {
 
 export function CommentSection({ postId }: CommentSectionProps) {
   const user = useAuthStore((state) => state.user);
+  const { toast } = useToast();
   const [comments, setComments] = useState<Comment[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [content, setContent] = useState("");
   const [hasFetched, setHasFetched] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    // Fetch comments when section mounts
     const fetchComments = async () => {
       setIsLoading(true);
       try {
@@ -59,6 +61,23 @@ export function CommentSection({ postId }: CommentSectionProps) {
       console.error("Failed to add comment:", err);
     } finally {
       setIsSending(false);
+    }
+  };
+
+  const handleDeleteComment = async (commentId: number) => {
+    setDeletingId(commentId);
+    try {
+      const res = await postService.deleteComment(commentId);
+      if (res.status === "ok") {
+        setComments((prev) => prev.filter((c) => c.commentId !== commentId));
+        toast({ title: "Comment deleted" });
+      } else {
+        toast({ variant: "destructive", title: "Error", description: res.message || "Could not delete comment." });
+      }
+    } catch {
+      toast({ variant: "destructive", title: "Error", description: "Could not delete comment." });
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -114,22 +133,42 @@ export function CommentSection({ postId }: CommentSectionProps) {
         </div>
       ) : comments.length > 0 ? (
         <div className="flex flex-col gap-2.5">
-          {comments.map((comment) => (
-            <div key={comment.commentId} className="flex items-start gap-2.5">
-              <Avatar className="h-7 w-7 shrink-0 mt-0.5">
-                <AvatarImage src={comment.picture} />
-                <AvatarFallback className="text-xs">
-                  {comment.name?.[0]}
-                </AvatarFallback>
-              </Avatar>
-              <div className="bg-muted/60 rounded-2xl rounded-tl-sm px-3 py-1.5 flex-1">
-                <span className="text-xs font-semibold leading-tight">
-                  {comment.name}
-                </span>
-                <p className="text-sm leading-snug mt-0.5">{comment.content}</p>
+          {comments.map((comment) => {
+            const isOwner = user?.id !== undefined && comment.userId === user.id;
+            return (
+              <div key={comment.commentId} className="flex items-start gap-2.5 group/comment">
+                <Avatar className="h-7 w-7 shrink-0 mt-0.5">
+                  <AvatarImage src={comment.picture} />
+                  <AvatarFallback className="text-xs">
+                    {comment.name?.[0]}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="bg-muted/60 rounded-2xl rounded-tl-sm px-3 py-1.5 flex-1">
+                  <span className="text-xs font-semibold leading-tight">
+                    {comment.name}
+                  </span>
+                  <p className="text-sm leading-snug mt-0.5">{comment.content}</p>
+                </div>
+                {/* Delete button only for author */}
+                {isOwner && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 shrink-0 rounded-full text-muted-foreground hover:text-destructive opacity-0 group-hover/comment:opacity-100 transition-opacity cursor-pointer"
+                    disabled={deletingId === comment.commentId}
+                    onClick={() => handleDeleteComment(comment.commentId)}
+                  >
+                    {deletingId === comment.commentId ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-3.5 w-3.5" />
+                    )}
+                    <span className="sr-only">Delete comment</span>
+                  </Button>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       ) : (
         hasFetched && (

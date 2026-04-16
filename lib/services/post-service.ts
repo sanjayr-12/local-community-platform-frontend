@@ -107,6 +107,16 @@ export const postService = {
     return response.data;
   },
 
+  async deletePost(postId: number): Promise<{ status: string; message?: string }> {
+    const response = await axiosInstance.delete(`/api/post/${postId}`);
+    return response.data;
+  },
+
+  async deleteComment(commentId: number): Promise<{ status: string; message?: string }> {
+    const response = await axiosInstance.delete(`/api/comment/${commentId}`);
+    return response.data;
+  },
+
   async likePost(postId: number): Promise<{ status: string }> {
     const response = await axiosInstance.post("/api/like", { postId });
     return response.data;

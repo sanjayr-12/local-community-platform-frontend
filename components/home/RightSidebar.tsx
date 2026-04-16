@@ -7,6 +7,7 @@ import { TrendingUp, Loader2, Hash } from "lucide-react";
 import { useLocation } from "@/lib/hooks/useLocation";
 import { postService } from "@/lib/services/post-service";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 
 interface TrendingData {
   district: string;
@@ -20,6 +21,7 @@ export function RightSidebar() {
 
   const [trending, setTrending] = useState<TrendingData | null>(null);
   const [isLoadingTrending, setIsLoadingTrending] = useState(false);
+  const [district, setDistrict] = useState<string | null>(null);
 
   useEffect(() => {
     if (!lat || !long) return;
@@ -40,6 +42,7 @@ export function RightSidebar() {
         const data = await res.json();
         const district = data?.address?.state_district;
         if (!district) return;
+        setDistrict(district);
 
         const trendingRes = await postService.getTrending(district);
         if (trendingRes.status === "ok" && trendingRes.data) {
@@ -107,9 +110,10 @@ export function RightSidebar() {
           ) : trending && trending.keywords.length > 0 ? (
             <>
               {trending.keywords.map((keyword, i) => (
-                <div
+                <Link
                   key={keyword}
-                  className="group flex cursor-default items-center gap-2.5"
+                  href={`/topic/${encodeURIComponent(keyword)}${district ? `?district=${encodeURIComponent(district)}` : ""}`}
+                  className="group flex items-center gap-2.5 rounded-lg px-1 py-0.5 -mx-1 hover:bg-primary/5 transition-colors cursor-pointer"
                 >
                   <span className="text-muted-foreground/50 text-xs w-4 text-right shrink-0">
                     {i + 1}
@@ -120,7 +124,7 @@ export function RightSidebar() {
                   <p className="group-hover:text-primary text-sm font-medium capitalize transition-colors leading-none">
                     {keyword}
                   </p>
-                </div>
+                </Link>
               ))}
               {trending.district && (
                 <p className="text-muted-foreground/60 text-xs pt-1">

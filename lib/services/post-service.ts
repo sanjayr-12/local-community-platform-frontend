@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { axiosInstance } from "@/lib/api/axios-client";
 
 export interface CreatePostPayload {
@@ -136,6 +137,16 @@ export const postService = {
   async getTrending(district: string): Promise<TrendingResponse> {
     const response = await axiosInstance.get<TrendingResponse>(
       `/api/post/trending?district=${encodeURIComponent(district)}`,
+    );
+    return response.data;
+  },
+
+  async searchPosts(
+    district: string,
+    keyword: string,
+  ): Promise<GetPostsResponse> {
+    const response = await axiosInstance.get<GetPostsResponse>(
+      `/api/post/search?district=${encodeURIComponent(district)}&keyword=${encodeURIComponent(keyword)}`,
     );
     return response.data;
   },

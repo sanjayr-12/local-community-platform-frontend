@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   Sheet,
@@ -13,40 +13,72 @@ import { Button } from "@/components/ui/button";
 import { ModeToggle } from "@/components/ui/mode-toggle";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { MapPin, Users, Calendar, Heart, Menu } from "lucide-react";
-import { GoogleLogin, CredentialResponse } from "@react-oauth/google";
+import {
+  GoogleLogin,
+  CredentialResponse,
+} from "@react-oauth/google";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
 import { authService } from "@/lib/services/auth-service";
 import { useAuthStore } from "@/store/useAuthStore";
+import { useToast } from "@/lib/hooks/use-toast";
 
 export default function GetStartedPage() {
   const [isLoginVisible, setIsLoginVisible] = useState(false);
+  const [enableOneTap, setEnableOneTap] = useState(false);
   const { resolvedTheme } = useTheme();
   const login = useAuthStore((state) => state.login);
   const setLoading = useAuthStore((state) => state.setLoading);
+  const { toast } = useToast();
   const router = useRouter();
+
+  useEffect(() => {
+    const isMobileBrowser =
+      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+        navigator.userAgent,
+      );
+
+    setEnableOneTap(!isMobileBrowser);
+  }, []);
 
   const handleGoogleSuccess = async (
     credentialResponse: CredentialResponse,
   ) => {
-    if (credentialResponse.credential) {
-      setLoading(true);
-      try {
-        const data = await authService.loginWithGoogle(
-          credentialResponse.credential,
-        );
-        login(data.user, data.token);
-        router.push("/");
-      } catch (error) {
-        console.error(error);
-      } finally {
-        setLoading(false);
-      }
+    if (!credentialResponse.credential) {
+      toast({
+        variant: "destructive",
+        title: "Google sign-in failed",
+        description: "Google did not return a credential. Please try again.",
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const data = await authService.loginWithGoogle(
+        credentialResponse.credential,
+      );
+      login(data.user, data.token);
+      router.push("/");
+    } catch (error) {
+      console.error("Google sign-in failed:", error);
+      toast({
+        variant: "destructive",
+        title: "Could not sign you in",
+        description: "Please try again in a moment.",
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleGoogleError = () => {
-    console.error("Values");
+    console.error("Google sign-in did not complete.");
+    toast({
+      variant: "destructive",
+      title: "Google sign-in failed",
+      description: "Google could not complete the sign-in flow.",
+    });
   };
 
   return (
@@ -163,8 +195,10 @@ export default function GetStartedPage() {
                 <GoogleLogin
                   onSuccess={handleGoogleSuccess}
                   onError={handleGoogleError}
-                  useOneTap
+                  useOneTap={enableOneTap}
+                  ux_mode="popup"
                   use_fedcm_for_prompt={false}
+                  use_fedcm_for_button
                   shape="pill"
                   theme={resolvedTheme === "dark" ? "filled_black" : "outline"}
                   size="large"
